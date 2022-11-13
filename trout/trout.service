@@ -1,0 +1,14 @@
+[Unit]
+Description=Trout DNS service
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=1
+User=trout
+ExecStart=/usr/bin/trout
+
+[Install]
+WantedBy=multi-user.target
