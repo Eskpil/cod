@@ -2,4 +2,4 @@
 
 curl -X POST "http://localhost:8090/api/resources/zones/" \
    -H 'Content-Type: application/json' \
-   -d '{"fqdn":"cod.","name":"cod"}'
+   -d '{"fqdn":"abc.","name":"cod"}'

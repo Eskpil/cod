@@ -2,6 +2,7 @@ package dns
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"time"
 
@@ -24,20 +25,62 @@ func (s *Service) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 		records, err := recordService.Search(ctx, question.Name)
 
 		if err != nil || 0 >= len(records) {
-			log.Warningf(" > Unknown record: \"%s\" tried to be resolved but failed redirecting request to \"8.8.8.8\"", question.Name)
-			// We dont have the record, lets try sending the request to someone who has it (google).
-			msg.Answer = append(msg.Answer, &dns.NS{
-				Hdr: dns.RR_Header{
-					Name:   question.Name,
-					Rrtype: dns.TypeNS,
-					Class:  dns.ClassINET,
-					Ttl:    1800,
-				},
-				Ns: "8.8.8.8",
-			})
+			req := new(dns.Msg)
 
-			w.WriteMsg(msg)
-			return
+			req.Id = dns.Id()
+			req.RecursionDesired = true
+			req.Question = make([]dns.Question, 1)
+			req.Question[0] = dns.Question{dns.Fqdn(question.Name), question.Qtype, dns.ClassINET}
+
+			c := new(dns.Client)
+			res, _, err := c.Exchange(req, "1.1.1.1:53")
+
+			fmt.Println(res.Answer)
+
+			if err != nil {
+				fmt.Println("error")
+				// Our last resort is redirecting the request to google dns
+				// directly through a NS record if asking google fails.
+				msg.Answer = append(msg.Answer, &dns.NS{
+					Hdr: dns.RR_Header{
+						Name:   question.Name,
+						Rrtype: dns.TypeNS,
+						Class:  dns.ClassINET,
+						Ttl:    1800,
+					},
+					Ns: "8.8.8.8",
+				})
+
+				continue
+			}
+
+			for _, answer := range res.Answer {
+				switch answer.Header().Rrtype {
+				case dns.TypeA:
+					if a, ok := answer.(*dns.A); ok {
+						msg.Answer = append(msg.Answer, &dns.A{
+							Hdr: dns.RR_Header{Name: a.Header().Name, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: a.Header().Ttl},
+							A:   a.A,
+						})
+					}
+				case dns.TypeTXT:
+					log.Info(" > Doing TXT record")
+					if txt, ok := answer.(*dns.TXT); ok {
+						msg.Answer = append(msg.Answer, &dns.TXT{
+							Hdr: dns.RR_Header{Name: txt.Header().Name, Rrtype: dns.TypeTXT, Class: dns.ClassINET, Ttl: txt.Header().Ttl},
+							Txt: txt.Txt,
+						})
+					}
+				case dns.TypeAAAA:
+					if aaaa, ok := answer.(*dns.AAAA); ok {
+						msg.Answer = append(msg.Answer, &dns.AAAA{
+							Hdr:  dns.RR_Header{Name: aaaa.Header().Name, Rrtype: dns.TypeAAAA, Class: dns.ClassINET, Ttl: aaaa.Header().Ttl},
+							AAAA: aaaa.AAAA,
+						})
+					}
+				}
+
+			}
 		}
 
 		for _, record := range records {

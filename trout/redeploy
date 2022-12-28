@@ -1,5 +1,7 @@
 #!/bin/sh
 
+go build -o main main.go
+
 sudo systemctl stop trout.service
 sudo cp main /usr/bin/trout
 sudo systemctl start trout.service

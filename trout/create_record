@@ -2,4 +2,4 @@
 
 curl -X POST "http://localhost:8090/api/resources/zones/4c47c579-7558-454b-bcac-8662bcafb4f6/records/" \
    -H 'Content-Type: application/json' \
-   -d '{"fqdn":"green.cod.","type":1,"value":"192.168.0.42"}'
+   -d '{"fqdn":"cyan.green.cod.","type":1,"value":"192.168.0.72"}'

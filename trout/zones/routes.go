@@ -2,7 +2,10 @@ package zones
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/eskpil/cod/trout/database"
@@ -58,6 +61,19 @@ func CreateOne() gin.HandlerFunc {
 			c.Abort()
 			return
 
+		}
+
+		if !strings.HasSuffix(body.Fqdn, ".") {
+			c.String(http.StatusBadRequest, fmt.Errorf("\"%s\" is not a valid fqdn.", body.Fqdn).Error())
+			c.Abort()
+			return
+		}
+
+		if ok, err := regexp.Match(`^(([a-z0-9][a-z0-9\-]*[a-z0-9])|[a-z0-9]+\.)*([a-z]+|xn\-\-[a-z0-9]+)\.?$`, []byte(body.Fqdn)); err != nil || !ok {
+			log.Error(err)
+			c.String(http.StatusBadRequest, fmt.Errorf("\"%s\" is not a valid fqdn.", body.Fqdn).Error())
+			c.Abort()
+			return
 		}
 
 		var zone database.Zone

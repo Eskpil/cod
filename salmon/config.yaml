@@ -1,0 +1,18 @@
+ssh:
+  keyPath: ./salmon
+  pass: test # TODO: Allow this to be encrypted somehow
+db:
+  filepath: ./testdata/db
+hosts:
+  - name: green
+    dns:
+      zone: green.lab.eskpil.com
+    hostname: 192.168.0.42
+    username: salmon 
+    libvirtAddress: /var/run/libvirt/libvirt-sock
+  - name: mint
+    dns:
+      zone: mint.lab.eskpil.com
+    hostname: 192.168.0.41
+    username: salmon 
+    libvirtAddress: /var/run/libvirt/libvirt-sock

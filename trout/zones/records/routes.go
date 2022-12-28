@@ -2,9 +2,13 @@ package records
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"regexp"
+	"strings"
 	"time"
 
+	"github.com/miekg/dns"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/eskpil/cod/trout/database"
@@ -53,7 +57,38 @@ func CreateOne() gin.HandlerFunc {
 
 		}
 
+		if !strings.HasSuffix(body.Fqdn, ".") {
+			c.String(http.StatusBadRequest, fmt.Errorf("\"%s\" is not a valid fqdn.", body.Fqdn).Error())
+			c.Abort()
+			return
+		}
+
+		if ok, err := regexp.Match(`^(([a-z0-9][a-z0-9\-]*[a-z0-9])|[a-z0-9]+\.)*([a-z]+|xn\-\-[a-z0-9]+)\.?$`, []byte(body.Fqdn)); err != nil || !ok {
+			log.Error(err)
+			c.String(http.StatusBadRequest, fmt.Errorf("\"%s\" is not a valid fqdn.", body.Fqdn).Error())
+			c.Abort()
+			return
+		}
+
 		var record database.Record
+
+		switch body.Type {
+		case dns.TypeA, dns.TypeAAAA:
+			if fmt.Sprintf("%T", body.Value) != "string" {
+				err := fmt.Errorf("\"value\" must be a string")
+				c.String(http.StatusBadRequest, err.Error())
+				c.Abort()
+				return
+			}
+		case dns.TypeTXT:
+			if fmt.Sprintf("%T", body.Value) != "[]string" {
+				err := fmt.Errorf("\"value\" must be a string array")
+				c.String(http.StatusBadRequest, err.Error())
+				c.Abort()
+				return
+
+			}
+		}
 
 		record.Id = uuid.New().String()
 		record.Fqdn = body.Fqdn
